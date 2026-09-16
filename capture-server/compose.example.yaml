@@ -1,0 +1,29 @@
+services:
+  capture-api:
+    build: .
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "1000:1000"
+    environment:
+      CAPTURE_BIND: "0.0.0.0:8787"
+      CAPTURE_FILE: "/notes/Inbox.md"
+      CAPTURE_TIMEZONE: "Asia/Shanghai"
+      CAPTURE_TOKEN_FILE: "/run/secrets/capture_token"
+      CAPTURE_MAX_BODY_BYTES: "262144"
+      CAPTURE_LOCK_TIMEOUT: "3s"
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - "/srv/markdown:/notes"
+    secrets:
+      - capture_token
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+secrets:
+  capture_token:
+    file: ./secrets/capture_token
+

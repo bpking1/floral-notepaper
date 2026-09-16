@@ -468,6 +468,13 @@ pub fn run() {
         })
         .on_window_event(desktop::handle_window_event)
         .invoke_handler(tauri::generate_handler![
+            services::remote::remote_config_get,
+            services::remote::remote_config_save,
+            services::remote::remote_request,
+            services::remote::remote_image_upload,
+            services::remote::remote_image_read,
+            services::remote::remote_set_dirty,
+            desktop::open_remote_window,
             app_name,
             notes_list,
             notes_get,
@@ -517,6 +524,14 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(move |_app_handle, _event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = &_event {
+                if services::remote::REMOTE_DIRTY.load(std::sync::atomic::Ordering::SeqCst) {
+                    api.prevent_exit();
+                    desktop::cancel_app_exit(_app_handle);
+                    let _ = desktop::open_remote_window(_app_handle.clone());
+                    let _ = _app_handle.emit("remote-exit-blocked", ());
+                }
+            }
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen {
                 has_visible_windows,

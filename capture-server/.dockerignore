@@ -1,0 +1,6 @@
+capture-api
+coverage.out
+secrets/
+*.md
+!README.md
+

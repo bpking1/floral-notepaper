@@ -29,4 +29,25 @@ describe("MarkdownPreview", () => {
     expect(preCloseIndex).toBeGreaterThan(-1);
     expect(buttonIndex).toBeGreaterThan(preCloseIndex);
   });
+
+  test("delegates image rendering with the original Markdown path and attributes", () => {
+    const renderImage = vi.fn(({ alt }: { src?: string; alt?: string; title?: string }) => (
+      <span>远程图片：{alt}</span>
+    ));
+    const markup = renderToStaticMarkup(
+      <MarkdownPreview
+        content={'![花](../images/flower.png "花园")'}
+        imageBaseDir="/local/notes"
+        renderImage={renderImage}
+      />,
+    );
+
+    expect(renderImage).toHaveBeenCalledWith({
+      src: "../images/flower.png",
+      alt: "花",
+      title: "花园",
+    });
+    expect(markup).toContain("远程图片：花");
+    expect(markup).not.toContain("<img");
+  });
 });

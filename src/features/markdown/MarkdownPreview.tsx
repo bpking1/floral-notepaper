@@ -69,6 +69,7 @@ interface MarkdownPreviewProps {
   fontSize?: number;
   renderHtml?: boolean;
   imageBaseDir?: string;
+  renderImage?: (props: { src?: string; alt?: string; title?: string }) => React.ReactNode;
 }
 
 const remarkPlugins = [remarkGfm, remarkMath, remarkAlerts];
@@ -282,12 +283,14 @@ export function MarkdownPreview({
   fontSize = 14,
   renderHtml = false,
   imageBaseDir,
+  renderImage,
 }: MarkdownPreviewProps) {
   const { t } = useTranslation();
   const components = useMemo<Components>(
     () => ({
       ...staticComponents,
       img: ({ src, alt, ...props }) => {
+        if (renderImage) return renderImage({ src, alt, title: props.title });
         const resolvedSrc = resolveMarkdownImageSrc(src, imageBaseDir, convertFileSrc);
         return (
           <img
@@ -300,7 +303,7 @@ export function MarkdownPreview({
         );
       },
     }),
-    [imageBaseDir],
+    [imageBaseDir, renderImage],
   );
   return (
     <div className="font-body markdown-selectable" style={{ fontSize: `${fontSize}px` }}>

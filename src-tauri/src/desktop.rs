@@ -1176,6 +1176,13 @@ pub fn handle_window_event(window: &Window, event: &WindowEvent) {
         }
     }
 
+    if window.label() == "notepad-remote" {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            let _ = window.hide();
+        }
+        return;
+    }
     if window.label() != MAIN_WINDOW_LABEL {
         return;
     }
@@ -1425,11 +1432,38 @@ pub fn show_main_window(app: &AppHandle) -> Result<(), AppError> {
     Ok(())
 }
 
+/// A single persistent remote editor retains its draft when hidden.
+#[tauri::command]
+pub fn open_remote_window(app: AppHandle) -> Result<String, AppError> {
+    open_or_focus_window(
+        &app,
+        "notepad-remote",
+        WindowOpenOptions {
+            url: "index.html?view=remote".into(),
+            title: "远程笔记 · 花笺".into(),
+            specs: WindowSizeSpec {
+                width: 760.0,
+                height: 560.0,
+                min_width: 460.0,
+                min_height: 360.0,
+            },
+            decorations: false,
+            always_on_top: true,
+            shadow: false,
+            skip_taskbar: true,
+            bounds: None,
+        },
+    )
+}
+
 fn open_notepad_window_now(
     app: &AppHandle,
     note_id: Option<&str>,
     bounds: Option<WindowBounds>,
 ) -> Result<String, AppError> {
+    if note_id.is_none() && crate::services::remote::remote_config_get()?.enabled {
+        return open_remote_window(app.clone());
+    }
     if note_id.is_none() {
         if let Some(reused) = activate_pooled_notepad(app, bounds) {
             clear_hidden_window_state(app);
@@ -1923,6 +1957,12 @@ fn app_is_exiting(app: &AppHandle) -> bool {
     app.try_state::<RuntimeState>()
         .map(|state| state.is_exiting())
         .unwrap_or(false)
+}
+
+pub(crate) fn cancel_app_exit(app: &AppHandle) {
+    if let Some(state) = app.try_state::<RuntimeState>() {
+        state.is_exiting.store(false, Ordering::SeqCst);
+    }
 }
 
 pub(crate) fn mark_app_exiting(app: &AppHandle) {

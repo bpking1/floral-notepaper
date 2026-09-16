@@ -1,4 +1,4 @@
-export type AppView = "main" | "notepad" | "tile";
+export type AppView = "main" | "notepad" | "tile" | "remote";
 
 export interface AppRoute {
   view: AppView;
@@ -14,6 +14,7 @@ export function routeFromSearch(search: string): AppRoute {
   const view = params.get("view");
   const noteId = params.get("noteId") ?? undefined;
 
+  if (view === "remote") return { view };
   if (view === "notepad") return noteId ? { view, noteId } : { view };
   if (view === "tile") return noteId ? { view, noteId } : { view };
   return { view: "main" };

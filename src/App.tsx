@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import "./App.css";
 import { ContextMenuProvider } from "./components/ContextMenu";
 import { MainWindow } from "./components/MainWindow";
+import { RemotePad } from "./features/remote/RemotePad";
 import { NotePad } from "./components/NotePad";
 import { TileShowcase } from "./components/TileShowcase";
 import { ToastContainer } from "./components/Toast";
@@ -83,6 +84,8 @@ function App() {
       <div className="app-window-shell h-screen font-body text-ink overflow-hidden">
         {activeView === "main" ? (
           <MainWindow />
+        ) : activeView === "remote" ? (
+          <RemotePad />
         ) : activeView === "notepad" ? (
           <NotePad initialNoteId={route.noteId} />
         ) : (

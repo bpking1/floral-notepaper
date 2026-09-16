@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { checkGlobalShortcut, chooseBackgroundImage } from "../features/settings/api";
+import { RemoteSettings } from "../features/remote/RemoteSettings";
 import { UpdateSettingsSection } from "../features/update/UpdateSettingsSection";
 import type {
   AppConfig,
@@ -115,6 +116,7 @@ export function SettingsPanel({ config, onChange, onMigrateDataDir, onClose }: S
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hidden px-4 py-4 space-y-5">
+        <RemoteSettings />
         <section className="space-y-2">
           <label className="block text-[11px] font-body text-ink-faint">
             {t("settings.theme.label", { defaultValue: "主题" })}
