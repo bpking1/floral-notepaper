@@ -33,11 +33,12 @@ if (disableMacosSigning) {
 fs.writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
 
 const cargoToml = fs.readFileSync(cargoTomlPath, "utf8");
-const nextCargoToml = cargoToml.replace(/^version = "[^"]*"/m, `version = "${version}"`);
-if (nextCargoToml === cargoToml) {
+const cargoVersionPattern = /^(version = ")[^"]*(")/m;
+if (!cargoVersionPattern.test(cargoToml)) {
   console.error("Failed to update version in src-tauri/Cargo.toml.");
   process.exit(1);
 }
+const nextCargoToml = cargoToml.replace(cargoVersionPattern, `$1${version}$2`);
 fs.writeFileSync(cargoTomlPath, nextCargoToml);
 
 console.log(
