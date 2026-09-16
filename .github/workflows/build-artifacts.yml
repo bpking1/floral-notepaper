@@ -25,6 +25,9 @@ on:
         required: true
         default: true
         type: boolean
+  push:
+    branches:
+      - feat/remote-notes
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -44,8 +47,8 @@ jobs:
         id: resolve
         shell: bash
         run: |
-          source_type="${{ github.event.inputs.source_type }}"
-          source_ref="${{ github.event.inputs.source_ref }}"
+          source_type="${{ github.event.inputs.source_type || 'branch' }}"
+          source_ref="${{ github.event.inputs.source_ref || github.ref_name }}"
 
           if [ -z "$source_ref" ]; then
             echo "source_ref is required." >&2
