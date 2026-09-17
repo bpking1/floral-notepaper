@@ -528,7 +528,7 @@ pub fn run() {
                 if services::remote::REMOTE_DIRTY.load(std::sync::atomic::Ordering::SeqCst) {
                     api.prevent_exit();
                     desktop::cancel_app_exit(_app_handle);
-                    let _ = desktop::open_remote_window(_app_handle.clone());
+                    let _ = desktop::open_remote_window_now(_app_handle);
                     let _ = _app_handle.emit("remote-exit-blocked", ());
                 }
             }

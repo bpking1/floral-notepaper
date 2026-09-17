@@ -1433,19 +1433,25 @@ pub fn show_main_window(app: &AppHandle) -> Result<(), AppError> {
 }
 
 /// A single persistent remote editor retains its draft when hidden.
+/// Must stay async: window creation from a synchronous command runs on the
+/// main thread and deadlocks the webview IPC, freezing the whole app.
 #[tauri::command]
-pub fn open_remote_window(app: AppHandle) -> Result<String, AppError> {
+pub async fn open_remote_window(app: AppHandle) -> Result<String, AppError> {
+    open_remote_window_now(&app)
+}
+
+pub(crate) fn open_remote_window_now(app: &AppHandle) -> Result<String, AppError> {
     open_or_focus_window(
-        &app,
+        app,
         "notepad-remote",
         WindowOpenOptions {
             url: "index.html?view=remote".into(),
             title: "远程笔记 · 花笺".into(),
             specs: WindowSizeSpec {
-                width: 760.0,
-                height: 560.0,
-                min_width: 460.0,
-                min_height: 360.0,
+                width: 260.0,
+                height: 260.0,
+                min_width: 220.0,
+                min_height: 220.0,
             },
             decorations: false,
             always_on_top: true,
@@ -1462,7 +1468,7 @@ fn open_notepad_window_now(
     bounds: Option<WindowBounds>,
 ) -> Result<String, AppError> {
     if note_id.is_none() && crate::services::remote::remote_config_get()?.enabled {
-        return open_remote_window(app.clone());
+        return open_remote_window_now(app);
     }
     if note_id.is_none() {
         if let Some(reused) = activate_pooled_notepad(app, bounds) {

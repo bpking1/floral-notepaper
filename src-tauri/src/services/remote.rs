@@ -89,8 +89,8 @@ pub fn remote_config_save(
         if config.base_url.is_empty() {
             return Err(error("remoteConfig", "请先填写 API 地址。"));
         }
-        if token.trim().len() < 32 {
-            return Err(error("remoteConfig", "Token 至少需要 32 个字符。"));
+        if token.trim().len() < 6 {
+            return Err(error("remoteConfig", "Token 至少需要 6 个字符。"));
         }
         credential(&config.base_url)?
             .set_password(token.trim())
