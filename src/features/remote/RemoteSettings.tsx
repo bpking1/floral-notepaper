@@ -72,15 +72,6 @@ export function RemoteSettings() {
             onChange={(e) => setToken(e.target.value)}
           />
         </label>
-        <label className="block text-xs text-ink-faint">
-          默认文件（笔记库内相对路径）
-          <input
-            className={inputClass}
-            placeholder="Inbox.md"
-            value={config.defaultFile}
-            onChange={(e) => setConfig({ ...config, defaultFile: e.target.value })}
-          />
-        </label>
         <p className="text-[11px] text-ink-faint leading-relaxed">
           Token 保存在系统凭据库。公网连接使用 HTTPS；HTTP 仅用于本机或可信私有网络。
         </p>

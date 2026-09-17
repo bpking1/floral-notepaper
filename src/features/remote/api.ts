@@ -12,7 +12,7 @@ export interface RemoteDocument {
 export const emptyRemoteConfig: RemoteConfig = {
   enabled: false,
   baseUrl: "",
-  defaultFile: "Inbox.md",
+  defaultFile: "",
 };
 export const getRemoteConfig = () => invoke<RemoteConfig>("remote_config_get");
 export const saveRemoteConfig = (config: RemoteConfig, token: string) =>

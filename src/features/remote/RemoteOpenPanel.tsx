@@ -1,48 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface RemoteOpenPanelProps {
   files: string[];
-  currentPath: string;
-  defaultNewPath: string;
+  currentPath: string | null;
   onOpenFile: (path: string) => void;
-  onCreateFile: (path: string) => void;
 }
 
-function isValidNewPath(path: string): boolean {
-  return (
-    !!path &&
-    !path.startsWith("/") &&
-    !path.includes("\\") &&
-    path.split("/").every((part) => part && part !== "." && part !== "..") &&
-    /\.(md|markdown)$/i.test(path)
-  );
+function baseName(path: string): string {
+  const index = path.lastIndexOf("/");
+  return index === -1 ? path : path.slice(index + 1);
 }
 
-export function RemoteOpenPanel({
-  files,
-  currentPath,
-  defaultNewPath,
-  onOpenFile,
-  onCreateFile,
-}: RemoteOpenPanelProps) {
+export function RemoteOpenPanel({ files, currentPath, onOpenFile }: RemoteOpenPanelProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [newPath, setNewPath] = useState(defaultNewPath);
-  const newPathTouchedRef = useRef(false);
-
-  useEffect(() => {
-    if (!newPathTouchedRef.current && defaultNewPath) setNewPath(defaultNewPath);
-  }, [defaultNewPath]);
+  const [hoveredFile, setHoveredFile] = useState<string | null>(null);
 
   const filteredFiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return files;
     return files.filter((file) => file.toLowerCase().includes(query));
   }, [files, searchQuery]);
-
-  const validNewPath = isValidNewPath(newPath);
-  const newFileExists = validNewPath && files.includes(newPath);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -98,66 +77,43 @@ export function RemoteOpenPanel({
               key={file}
               type="button"
               onClick={() => onOpenFile(file)}
+              onMouseEnter={() => setHoveredFile(file)}
+              onMouseLeave={() => setHoveredFile(null)}
               title={file}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer group hover:bg-paper-warm/70 ${
+              className={`w-full text-left px-3.5 py-3 rounded-xl transition-all duration-200 cursor-pointer group hover:bg-paper-warm/70 ${
                 file === currentPath ? "bg-paper-warm/70" : ""
               }`}
             >
-              <span
-                className={`text-[13px] font-display font-medium truncate block pr-2 transition-colors ${
-                  file === currentPath ? "text-bamboo" : "text-ink-soft group-hover:text-ink"
-                }`}
-              >
+              <div className="flex items-center justify-between mb-0.5">
+                <span
+                  className={`text-[13px] font-display font-medium truncate pr-2 transition-colors ${
+                    file === currentPath
+                      ? "text-bamboo"
+                      : "text-ink-soft group-hover:text-ink"
+                  }`}
+                >
+                  {baseName(file)}
+                </span>
+              </div>
+              <p className="text-[12px] text-ink-ghost leading-relaxed truncate group-hover:text-ink-faint transition-colors">
                 {file}
-              </span>
+              </p>
+              {hoveredFile === file && (
+                <div className="mt-1.5 h-px bg-bamboo/10 transition-all duration-300" />
+              )}
             </button>
           ))}
           {files.length === 0 && (
-            <div className="px-4 py-6 text-center text-[12px] text-ink-ghost">
+            <div className="px-4 py-8 text-center text-[12px] text-ink-ghost">
               {t("remote.emptyState", { defaultValue: "服务器上没有找到 Markdown 文件" })}
             </div>
           )}
           {files.length > 0 && filteredFiles.length === 0 && (
-            <div className="px-4 py-6 text-center text-[12px] text-ink-ghost">
+            <div className="px-4 py-8 text-center text-[12px] text-ink-ghost">
               {t("notepad.search.noResults", { defaultValue: "没有匹配的笔记" })}
             </div>
           )}
         </div>
-      </div>
-
-      <div className="px-3 pb-3 pt-1 shrink-0 flex items-center gap-2">
-        <input
-          type="text"
-          value={newPath}
-          onChange={(event) => {
-            newPathTouchedRef.current = true;
-            setNewPath(event.target.value);
-          }}
-          placeholder={t("remote.newFile.placeholder", { defaultValue: "新文件.md" })}
-          aria-label={t("remote.newFile.aria", { defaultValue: "新文件路径" })}
-          className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-paper-warm/60 border border-paper-deep/30 text-[12px] font-body text-ink placeholder:text-ink-ghost/60 outline-none focus:border-ink-faint"
-        />
-        <button
-          type="button"
-          disabled={!validNewPath}
-          onClick={() => {
-            if (!validNewPath) return;
-            if (newFileExists) onOpenFile(newPath);
-            else onCreateFile(newPath);
-          }}
-          title={
-            newPath && !validNewPath
-              ? t("remote.newFile.invalid", {
-                  defaultValue: "需要笔记库内的相对 Markdown 路径，例如 Inbox.md",
-                })
-              : newFileExists
-                ? t("remote.newFile.exists", { defaultValue: "文件已存在，点击打开" })
-                : t("remote.newFile.create", { defaultValue: "新建文件（父目录需已存在）" })
-          }
-          className="px-3 py-1.5 text-[12px] text-cloud bg-bamboo hover:bg-bamboo-light rounded-lg transition-all duration-200 font-medium cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
-        >
-          {t("remote.newFile.button", { defaultValue: "新建" })}
-        </button>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import chroma from "chroma-js";
-import type { CSSProperties, HTMLAttributes } from "react";
+import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TILE_COLOR, normalizeTileColor } from "../features/settings/tileColor";
@@ -17,6 +17,7 @@ export interface TileProps extends Omit<
   fontSize?: number;
   renderMarkdown?: boolean;
   imageBaseDir?: string;
+  renderImage?: (props: { src?: string; alt?: string; title?: string }) => ReactNode;
 }
 
 const MARK_SIZE = 8;
@@ -77,6 +78,7 @@ export function Tile({
   fontSize = 14,
   renderMarkdown = false,
   imageBaseDir,
+  renderImage,
   className = "",
   style,
   children,
@@ -127,6 +129,7 @@ export function Tile({
                 fontSize={fontSize}
                 renderHtml={false}
                 imageBaseDir={imageBaseDir}
+                renderImage={renderImage}
               />
             </div>
           ) : (

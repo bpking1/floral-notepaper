@@ -1437,10 +1437,19 @@ pub fn show_main_window(app: &AppHandle) -> Result<(), AppError> {
 /// main thread and deadlocks the webview IPC, freezing the whole app.
 #[tauri::command]
 pub async fn open_remote_window(app: AppHandle) -> Result<String, AppError> {
-    open_remote_window_now(&app)
+    open_remote_window_at(&app, None)
 }
 
 pub(crate) fn open_remote_window_now(app: &AppHandle) -> Result<String, AppError> {
+    open_remote_window_at(app, None)
+}
+
+fn open_remote_window_at(app: &AppHandle, bounds: Option<WindowBounds>) -> Result<String, AppError> {
+    // Mirrors the pooled notepad activation: every hotkey press starts a
+    // fresh blank note instead of reopening the previous document.
+    if let Some(window) = app.get_webview_window("notepad-remote") {
+        let _ = window.emit("remote:activate", ());
+    }
     open_or_focus_window(
         app,
         "notepad-remote",
@@ -1457,7 +1466,7 @@ pub(crate) fn open_remote_window_now(app: &AppHandle) -> Result<String, AppError
             always_on_top: true,
             shadow: false,
             skip_taskbar: true,
-            bounds: None,
+            bounds,
         },
     )
 }
@@ -1468,7 +1477,7 @@ fn open_notepad_window_now(
     bounds: Option<WindowBounds>,
 ) -> Result<String, AppError> {
     if note_id.is_none() && crate::services::remote::remote_config_get()?.enabled {
-        return open_remote_window_now(app);
+        return open_remote_window_at(app, bounds);
     }
     if note_id.is_none() {
         if let Some(reused) = activate_pooled_notepad(app, bounds) {

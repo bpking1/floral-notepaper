@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDirty, mergeBase, openedSession, savedSession } from "./session";
+import { blankDraft, isDirty, mergeBase, openedSession, savedSession } from "./session";
 
 describe("remote draft preservation", () => {
   it("keeps edits made after a save snapshot dirty", () => {
@@ -7,7 +7,7 @@ describe("remote draft preservation", () => {
       ...openedSession("Inbox.md", { content: "old", revision: '"v1"' }),
       content: "newer draft",
     };
-    const result = savedSession(doc, "submitted draft", '"v2"');
+    const result = savedSession(doc, "Inbox.md", "submitted draft", '"v2"');
     expect(result.content).toBe("newer draft");
     expect(isDirty(result)).toBe(true);
   });
@@ -28,7 +28,12 @@ describe("remote draft preservation", () => {
   it("treats even an empty new file as pending, and successful saves as clean", () => {
     const doc = { path: "new.md", content: "", baseline: "", revision: null };
     expect(isDirty(doc)).toBe(true);
-    expect(isDirty(savedSession(doc, "", '"v1"'))).toBe(false);
+    expect(isDirty(savedSession(doc, "new.md", "", '"v1"'))).toBe(false);
     expect(isDirty(null)).toBe(false);
+  });
+  it("starts every quick note as a pathless blank draft", () => {
+    const draft = blankDraft();
+    expect(draft.path).toBeNull();
+    expect(isDirty(draft)).toBe(true);
   });
 });
