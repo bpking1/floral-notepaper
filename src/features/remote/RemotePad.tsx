@@ -119,7 +119,7 @@ export function RemotePad() {
   const [surfaceMode, setSurfaceMode] = useState<NoteSurfaceMode>("pad");
   const [mode, setMode] = useState<OpenMode>("new");
   const [files, setFiles] = useState<string[]>([]);
-  const [doc, setDoc] = useState<RemoteSession | null>(null);
+  const [doc, setDoc] = useState<RemoteSession>(() => blankDraft());
   const [title, setTitle] = useState("");
   const [titleBaseline, setTitleBaseline] = useState("");
   const [latest, setLatest] = useState<RemoteDocument | null>(null);
@@ -155,6 +155,12 @@ export function RemotePad() {
     [],
   );
 
+  // 空白便笺不算待保存内容，避免每次唤起都生成空文件
+  const pendingChanges = useCallback(
+    () => isDraftDirty() && hasDraftContentRef.current(),
+    [isDraftDirty],
+  );
+
   const statusLabel = useMemo<Record<RemoteStatus, string>>(
     () => ({
       empty: t("notepad.status.empty", { defaultValue: "空" }),
@@ -175,7 +181,7 @@ export function RemotePad() {
     [t],
   );
 
-  function changeDoc(next: RemoteSession | null) {
+  function changeDoc(next: RemoteSession) {
     docRef.current = next;
     setDoc(next);
     const nextDirty = isDirty(next) || titleValueRef.current !== titleBaselineRef.current;
@@ -199,6 +205,8 @@ export function RemotePad() {
       docRef.current?.path || titleValueRef.current.trim() || (docRef.current?.content ?? "").trim(),
     );
   }, []);
+  const hasDraftContentRef = useRef(hasDraftContent);
+  hasDraftContentRef.current = hasDraftContent;
 
   const refreshFiles = useCallback(async () => {
     const connection = configRef.current;
@@ -230,6 +238,7 @@ export function RemotePad() {
     const current = docRef.current;
     const connection = configRef.current;
     if (!current || !connection?.baseUrl || !isDraftDirty()) return false;
+    if (!current.path && !hasDraftContentRef.current()) return false;
     if (busyRef.current) return false;
     busyRef.current = true;
     const submittedTitle = titleValueRef.current;
@@ -375,14 +384,14 @@ export function RemotePad() {
 
   const handleOpenNote = useCallback(
     async (path: string) => {
-      if (isDraftDirty()) {
+      if (pendingChanges()) {
         const saved = await saveRef.current();
         if (!saved) return;
       }
       await openFile(path);
       await switchSurfaceModeRef.current("pad");
     },
-    [isDraftDirty, openFile],
+    [openFile, pendingChanges],
   );
 
   const ensureDraftPath = useCallback((): string | null => {
@@ -444,12 +453,12 @@ export function RemotePad() {
   );
 
   const handlePin = useCallback(async () => {
-    if (isDraftDirty()) {
+    if (pendingChanges()) {
       const saved = await saveRef.current();
       if (!saved) return;
     }
     await switchSurfaceModeRef.current("tile");
-  }, [isDraftDirty]);
+  }, [pendingChanges]);
 
   const handleClose = useCallback(() => {
     setIsExiting(true);
@@ -576,7 +585,7 @@ export function RemotePad() {
   useEffect(() => {
     const unlisten = listen("remote:activate", () => {
       void (async () => {
-        if (isDraftDirty()) {
+        if (pendingChanges()) {
           const saved = await saveRef.current();
           if (!saved) return;
         }
@@ -588,7 +597,7 @@ export function RemotePad() {
     return () => {
       void unlisten.then((fn) => fn());
     };
-  }, [isDraftDirty, refreshFiles, resetDraft]);
+  }, [pendingChanges, refreshFiles, resetDraft]);
 
   useEffect(() => {
     const unlisten = listen<UpdateInstallPrepareRequest>(
@@ -596,7 +605,7 @@ export function RemotePad() {
       (event) => {
         const respond = async () => {
           const windowLabel = getCurrentWindow().label;
-          if (!isDraftDirty()) {
+          if (!pendingChanges()) {
             await reportInstallPreparation(event.payload.requestId, windowLabel, "ready");
             return;
           }
@@ -621,7 +630,7 @@ export function RemotePad() {
     return () => {
       void unlisten.then((fn) => fn());
     };
-  }, [isDraftDirty, t]);
+  }, [pendingChanges, t]);
 
   useEffect(() => {
     const exit = listen("remote-exit-blocked", () => {
@@ -723,14 +732,16 @@ export function RemotePad() {
     if (!noteSurfaceAutoSave || mode !== "new" || status !== "dirty") {
       return undefined;
     }
-    if (!hasDraftContent()) return undefined;
+    if (!hasDraftContentRef.current()) return undefined;
 
     const timer = window.setTimeout(() => {
       void handleSaveRef.current({ isAutoSave: true });
     }, 900);
 
     return () => window.clearTimeout(timer);
-  }, [hasDraftContent, mode, noteSurfaceAutoSave, status]);
+    // doc/title 作为依赖：持续输入时像速记一样不断重置防抖计时
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc, title, mode, noteSurfaceAutoSave, status]);
 
   const clearPendingTileDrag = useCallback(() => {
     tileDragIntentRef.current = null;
