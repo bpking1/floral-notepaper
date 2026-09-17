@@ -4,10 +4,10 @@ services:
     restart: unless-stopped
     user: "1000:1000" # Change to the owner of your notes directory.
     ports:
-      - "127.0.0.1:8788:8788"
+      - "127.0.0.1:8789:8789"
     environment:
       NOTES_ROOT: /notes
-      NOTES_BIND: 0.0.0.0:8788
+      NOTES_BIND: 0.0.0.0:8789
       NOTES_TOKEN_FILE: /run/secrets/notes_token
     volumes:
       - /srv/markdown:/notes

@@ -7,8 +7,10 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func jsonResponse(w http.ResponseWriter, status int, value any) {
@@ -20,26 +22,66 @@ func apiError(w http.ResponseWriter, status int, code, message string) {
 	jsonResponse(w, status, map[string]string{"code": code, "message": message})
 }
 func storeError(w http.ResponseWriter, err error) {
+	var status int
+	var code, message string
 	switch {
 	case errors.Is(err, errConflict):
-		apiError(w, 412, "conflict", err.Error())
+		status, code, message = 412, "conflict", err.Error()
 	case errors.Is(err, errImageConflict):
-		apiError(w, 409, "imageConflict", err.Error())
+		status, code, message = 409, "imageConflict", err.Error()
 	case errors.Is(err, fs.ErrNotExist):
-		apiError(w, 404, "notFound", "file or parent directory does not exist")
+		status, code, message = 404, "notFound", "file or parent directory does not exist"
 	case errors.Is(err, errPath), errors.Is(err, errImagePath):
-		apiError(w, 400, "invalidPath", err.Error())
+		status, code, message = 400, "invalidPath", err.Error()
 	case errors.Is(err, errLarge), errors.Is(err, errImageLarge), errors.Is(err, errImagePixels):
-		apiError(w, 413, "tooLarge", err.Error())
+		status, code, message = 413, "tooLarge", err.Error()
 	case errors.Is(err, errImageFormat):
-		apiError(w, 415, "unsupportedImage", err.Error())
+		status, code, message = 415, "unsupportedImage", err.Error()
 	case errors.Is(err, errEncoding):
-		apiError(w, 422, "encoding", err.Error())
+		status, code, message = 422, "encoding", err.Error()
 	case errors.Is(err, fs.ErrPermission):
-		apiError(w, 403, "permission", "notes directory permission denied")
+		status, code, message = 403, "permission", "notes directory permission denied"
 	default:
-		apiError(w, 500, "io", "file operation failed; check server permissions and directory size")
+		status, code, message = 500, "io", "file operation failed; check server permissions and directory size"
 	}
+	if status >= 500 {
+		// Server-side failures are invisible in the generic response body; log them.
+		log.Printf("store error: %v", err)
+	}
+	apiError(w, status, code, message)
+}
+
+// statusWriter records the response status for request logging.
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *statusWriter) Write(data []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+// requestLog lines contain method, path and query, but never headers,
+// bodies or tokens.
+func requestLog(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		recorder := &statusWriter{ResponseWriter: w}
+		handler.ServeHTTP(recorder, r)
+		if recorder.status == 0 {
+			recorder.status = http.StatusOK
+		}
+		log.Printf("%s %s -> %d (%s) from %s", r.Method, r.URL.RequestURI(), recorder.status,
+			time.Since(start).Round(time.Microsecond), r.RemoteAddr)
+	})
 }
 func handler(s *store, token string) http.Handler {
 	mux := http.NewServeMux()
@@ -105,7 +147,7 @@ func handler(s *store, token string) http.Handler {
 		jsonResponse(w, 200, map[string]string{"revision": revision})
 	})
 	expected := sha256.Sum256([]byte("Bearer " + token))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return requestLog(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		// Native desktop client uses no cookies and does not need CORS.
@@ -117,5 +159,5 @@ func handler(s *store, token string) http.Handler {
 			}
 		}
 		mux.ServeHTTP(w, r)
-	})
+	}))
 }

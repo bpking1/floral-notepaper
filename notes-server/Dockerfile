@@ -5,5 +5,5 @@ RUN go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /notes
 FROM scratch
 COPY --from=build /notes-api /notes-api
 USER 65532:65532
-EXPOSE 8788
+EXPOSE 8789
 ENTRYPOINT ["/notes-api"]

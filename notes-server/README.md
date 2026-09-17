@@ -14,7 +14,7 @@ export NOTES_TOKEN="$(openssl rand -hex 32)"
 go run .
 ```
 
-默认监听 `127.0.0.1:8788`。`NOTES_ROOT` 必须已存在，服务用户需要读写笔记目录的权限。
+默认监听 `127.0.0.1:8789`。`NOTES_ROOT` 必须已存在，服务用户需要读写笔记目录的权限。
 
 Docker Compose：
 
@@ -33,7 +33,7 @@ docker compose up -d --build
 
 ```caddyfile
 notes.example.com {
-    reverse_proxy 127.0.0.1:8788
+    reverse_proxy 127.0.0.1:8789
 }
 ```
 
@@ -42,9 +42,9 @@ notes.example.com {
 | 配置               | 说明                                    |
 | ------------------ | --------------------------------------- |
 | `NOTES_ROOT`       | 现有 Markdown 笔记库目录，必填          |
-| `NOTES_TOKEN`      | 至少 32 字符的访问令牌                  |
+| `NOTES_TOKEN`      | 至少 6 字符的访问令牌                   |
 | `NOTES_TOKEN_FILE` | 从文件读取令牌，与 `NOTES_TOKEN` 二选一 |
-| `NOTES_BIND`       | 默认 `127.0.0.1:8788`                   |
+| `NOTES_BIND`       | 默认 `127.0.0.1:8789`                   |
 
 ## 桌面端使用
 
