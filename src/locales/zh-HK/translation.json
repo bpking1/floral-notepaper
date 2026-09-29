@@ -167,7 +167,8 @@
   },
   "notepad": {
     "button": {
-      "clear": "清除"
+      "clear": "清除",
+      "send": "傳送"
     },
     "emptyState": "還沒有可開啟的筆記",
     "search": {
@@ -198,7 +199,35 @@
     "tooltip": {
       "close": "關閉",
       "openInEditor": "在編輯器中開啟",
-      "pinToTile": "轉為磁貼"
+      "pinToTile": "轉為磁貼",
+      "send": "傳送到遠端 Inbox（Ctrl+Enter）"
+    }
+  },
+  "remote": {
+    "target": {
+      "append": "追加到已有筆記",
+      "create": "新建筆記"
+    },
+    "tab": {
+      "local": "本機",
+      "remote": "遠端"
+    },
+    "search": {
+      "placeholder": "搜尋路徑，如：日記 09"
+    },
+    "imageCopied": "圖片已複製",
+    "openInNewWindow": "在新視窗中打開",
+    "delete": "刪除",
+    "confirmDelete": "確認刪除（移到回收站）",
+    "deleted": "已移到伺服器回收站：{{path}}",
+    "empty": "伺服器上還沒有 Markdown 筆記",
+    "loading": "正在載入遠端檔案…",
+    "moreResults": "還有 {{count}} 個檔案，輸入關鍵字縮小範圍",
+    "truncated": "檔案過多，只列出最近修改的 {{count}} 個",
+    "conflictResolved": "伺服器上的檔案已被修改，已載入最新版本；你的修改已另存為本機便箋「{{title}}」。",
+    "error": {
+      "copyImage": "複製圖片失敗",
+      "images": "遠端圖片上傳失敗"
     }
   },
   "settings": {

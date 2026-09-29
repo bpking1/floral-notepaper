@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { createNote, getErrorMessage, getNote, listNotes, updateNote } from "../features/notes/api";
+import { createNote, getErrorMessage, listNotes } from "../features/notes/api";
+import { getNote, isRemoteNoteId, updateNote } from "../features/remote/remoteNotes";
 import { useImagePaste } from "../features/images/useImagePaste";
 import { useImageBaseDir } from "../features/images/useImageBaseDir";
 import { reportInstallPreparation } from "../features/update/api";
@@ -25,6 +26,12 @@ import {
 } from "../features/windows/controls";
 import type { ResizeDirection } from "../features/windows/controls";
 import { getConfig } from "../features/settings/api";
+import { InboxSendButton, useInboxSend } from "../features/remote/useInboxSend";
+import { TitleTargetHint } from "../features/remote/TitleTargetHint";
+import { useRemoteNote } from "../features/remote/useRemoteNote";
+import { OpenPanelWithRemote } from "../features/remote/RemoteOpenPanel";
+import { useRemoteTileContent } from "../features/remote/remoteImages";
+import { useTileImageCopy } from "../features/remote/useTileImageCopy";
 import {
   DEFAULT_TILE_COLOR,
   normalizeTileColor,
@@ -50,7 +57,6 @@ import {
   emitTileWindowUnpinned,
   tileSurfaceModeUnpinNoteId,
 } from "../features/windows/tileWindowEvents";
-import { NotepadOpenPanel } from "./NotepadOpenPanel";
 import { Tile } from "./Tile";
 
 type OpenMode = "new" | "open";
@@ -637,6 +643,16 @@ export function NotePad({
 
   const handleCloseRef = useRef(handleClose);
   handleCloseRef.current = handleClose;
+  const inbox = useInboxSend({
+    canSend: mode === "new" && !isRemoteNoteId(editingNoteId),
+    title,
+    content,
+    saveNote,
+    onSent: handleClose,
+  });
+  useRemoteNote({ noteId: editingNoteId, title, content, setContent, setStatus });
+  const tileContent = useRemoteTileContent(tileNoteId, content);
+  useTileImageCopy();
   const copyTileContentRef = useRef(copyTileContent);
   copyTileContentRef.current = copyTileContent;
   const switchSurfaceModeRef = useRef(switchSurfaceMode);
@@ -721,7 +737,7 @@ export function NotePad({
       {isTile ? (
         <Tile
           title={tileTitle || undefined}
-          content={content}
+          content={tileContent}
           color={tileColor}
           fontSize={surfaceFontSize}
           renderMarkdown={tileRenderMarkdown}
@@ -844,6 +860,7 @@ export function NotePad({
                   ref={titleRef}
                   type="text"
                   value={title}
+                  readOnly={isRemoteNoteId(editingNoteId)}
                   onChange={(event) => {
                     setTitle(event.target.value);
                     setStatus("dirty");
@@ -858,6 +875,7 @@ export function NotePad({
                   className="w-full font-display font-medium text-ink placeholder:text-ink-ghost/60 mb-2 tracking-wide shrink-0"
                   style={{ fontSize: `${surfaceFontSize}px` }}
                 />
+                <TitleTargetHint active={inbox.active} title={title} titleRef={titleRef} />
 
                 <textarea
                   ref={contentRef}
@@ -904,11 +922,12 @@ export function NotePad({
                     >
                       {t("common.save", { defaultValue: "保存" })}
                     </button>
+                    {inbox.enabled && <InboxSendButton onSend={() => void inbox.send()} />}
                   </div>
                 </div>
               </div>
             ) : (
-              <NotepadOpenPanel
+              <OpenPanelWithRemote
                 notes={notes}
                 onOpenNote={(noteId) => void handleOpenNote(noteId)}
               />

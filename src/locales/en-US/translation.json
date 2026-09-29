@@ -167,7 +167,8 @@
   },
   "notepad": {
     "button": {
-      "clear": "Clear"
+      "clear": "Clear",
+      "send": "Send"
     },
     "emptyState": "No notes available",
     "search": {
@@ -198,7 +199,35 @@
     "tooltip": {
       "close": "Close",
       "openInEditor": "Open in Editor",
-      "pinToTile": "Pin to Tile"
+      "pinToTile": "Pin to Tile",
+      "send": "Send to remote Inbox (Ctrl+Enter)"
+    }
+  },
+  "remote": {
+    "target": {
+      "append": "append to existing note",
+      "create": "new note"
+    },
+    "tab": {
+      "local": "Local",
+      "remote": "Remote"
+    },
+    "search": {
+      "placeholder": "Search paths, e.g. diary 09"
+    },
+    "imageCopied": "Image copied",
+    "openInNewWindow": "Open in new window",
+    "delete": "Delete",
+    "confirmDelete": "Confirm (move to trash)",
+    "deleted": "Moved to the server trash: {{path}}",
+    "empty": "No Markdown notes on the server yet",
+    "loading": "Loading remote files…",
+    "moreResults": "{{count}} more files, type to narrow down",
+    "truncated": "Too many files; showing the {{count}} most recently modified",
+    "conflictResolved": "The file changed on the server. Loaded the latest version; your edits were saved as the local note \"{{title}}\".",
+    "error": {
+      "copyImage": "Failed to copy image",
+      "images": "Remote image upload failed"
     }
   },
   "settings": {

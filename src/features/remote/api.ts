@@ -58,6 +58,16 @@ export const listRemoteFiles = async (baseUrl: string): Promise<RemoteListing> =
   parseRemoteListing(await invoke<unknown>("remote_request", { baseUrl, action: "list" }));
 export const readRemoteFile = (baseUrl: string, path: string) =>
   invoke<RemoteDocument>("remote_request", { baseUrl, action: "read", path });
+export interface ServerConfig {
+  inbox: string;
+  /** Directory for titled captures without a leading `/`; empty is the library root. */
+  newDir: string;
+}
+export const getServerConfig = (baseUrl: string) =>
+  invoke<ServerConfig>("remote_request", { baseUrl, action: "config" });
+/** Moves the file to the server's `.trash/` directory, from where it can be restored. */
+export const deleteRemoteFile = (baseUrl: string, path: string) =>
+  invoke<{ trashedTo: string }>("remote_request", { baseUrl, action: "delete", path });
 /** Overwrites the file only if it is still at `revision`; otherwise fails with code `conflict`. */
 export const writeRemoteFile = (baseUrl: string, path: string, content: string, revision: string) =>
   invoke<{ revision: string }>("remote_request", {
@@ -82,8 +92,12 @@ export const uploadRemoteImage = (notePath: string, data: Uint8Array, name = "")
     },
   });
 /** Uploads a local note image (`images/<noteId>/<file>`) linked from the next inbox entry. */
-export const uploadInboxImage = (imagePath: string) =>
-  invoke<UploadedRemoteImage>("remote_inbox_image_upload", { imagePath });
+export const uploadInboxImage = (imagePath: string, notePath?: string) =>
+  invoke<UploadedRemoteImage>("remote_inbox_image_upload", {
+    imagePath,
+    notePath: notePath ?? null,
+  });
 /** `id` must stay the same when retrying the same content, so the server can de-duplicate. */
-export const appendToInbox = (id: string, title: string, text: string) =>
-  invoke<AppendResult>("remote_append", { id, title, text });
+/** Without `path` the capture goes to the inbox; with it, that note is created or extended. */
+export const appendToInbox = (id: string, title: string, text: string, path?: string) =>
+  invoke<AppendResult>("remote_append", { id, title, text, path: path ?? null });

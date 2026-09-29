@@ -167,7 +167,8 @@
   },
   "notepad": {
     "button": {
-      "clear": "清空"
+      "clear": "清空",
+      "send": "发送"
     },
     "emptyState": "还没有可打开的笔记",
     "search": {
@@ -198,7 +199,35 @@
     "tooltip": {
       "close": "关闭",
       "openInEditor": "在编辑器中打开",
-      "pinToTile": "转为磁贴"
+      "pinToTile": "转为磁贴",
+      "send": "发送到远程 Inbox（Ctrl+Enter）"
+    }
+  },
+  "remote": {
+    "target": {
+      "append": "追加到已有笔记",
+      "create": "新建笔记"
+    },
+    "tab": {
+      "local": "本地",
+      "remote": "远程"
+    },
+    "search": {
+      "placeholder": "搜索路径，如：日记 09"
+    },
+    "imageCopied": "图片已复制",
+    "openInNewWindow": "在新窗口中打开",
+    "delete": "删除",
+    "confirmDelete": "确认删除（移到回收站）",
+    "deleted": "已移到服务器回收站：{{path}}",
+    "empty": "服务器上还没有 Markdown 笔记",
+    "loading": "正在加载远程文件…",
+    "moreResults": "还有 {{count}} 个文件，输入关键词缩小范围",
+    "truncated": "文件过多，只列出最近修改的 {{count}} 个",
+    "conflictResolved": "服务器上的文件已被修改，已载入最新版本；你的修改已另存为本地便笺「{{title}}」。",
+    "error": {
+      "copyImage": "复制图片失败",
+      "images": "远程图片上传失败"
     }
   },
   "settings": {
