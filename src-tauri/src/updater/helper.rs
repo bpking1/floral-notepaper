@@ -2182,6 +2182,9 @@ fn force_terminate_process(pid: u32, log: &mut File) -> bool {
 
 #[cfg(not(target_os = "windows"))]
 fn force_terminate_process(pid: u32, _log: &mut File) -> bool {
+    if pid == 0 || pid >= i32::MAX as u32 {
+        return false;
+    }
     Command::new("/bin/kill")
         .args(["-9", &pid.to_string()])
         .status()
@@ -2194,6 +2197,9 @@ use std::process::Stdio;
 
 #[cfg(not(target_os = "windows"))]
 fn process_is_running(pid: u32, expected_target_path: Option<&Path>) -> bool {
+    if pid == 0 || pid >= i32::MAX as u32 {
+        return false;
+    }
     let signal_ok = Command::new("/bin/kill")
         .args(["-0", &pid.to_string()])
         .stderr(Stdio::null())
