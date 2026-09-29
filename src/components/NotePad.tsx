@@ -32,6 +32,7 @@ import { useRemoteNote } from "../features/remote/useRemoteNote";
 import { OpenPanelWithRemote } from "../features/remote/RemoteOpenPanel";
 import { useRemoteTileContent } from "../features/remote/remoteImages";
 import { useTileImageCopy } from "../features/remote/useTileImageCopy";
+import { useTaskToggle } from "../features/tasks/useTaskToggle";
 import {
   DEFAULT_TILE_COLOR,
   normalizeTileColor,
@@ -652,6 +653,11 @@ export function NotePad({
   });
   useRemoteNote({ noteId: editingNoteId, title, content, setContent, setStatus });
   const tileContent = useRemoteTileContent(tileNoteId, content);
+  const toggleTask = useTaskToggle({
+    setContent,
+    setStatus,
+    save: () => handleSave({ isAutoSave: true }),
+  });
   useTileImageCopy();
   const copyTileContentRef = useRef(copyTileContent);
   copyTileContentRef.current = copyTileContent;
@@ -742,6 +748,7 @@ export function NotePad({
           fontSize={surfaceFontSize}
           renderMarkdown={tileRenderMarkdown}
           imageBaseDir={imageBaseDir ?? undefined}
+          onToggleTask={toggleTask}
           width="100%"
           className="h-full cursor-default"
           data-surface-mode={surfaceMode}

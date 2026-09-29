@@ -69,6 +69,8 @@ interface MarkdownPreviewProps {
   fontSize?: number;
   renderHtml?: boolean;
   imageBaseDir?: string;
+  /** Makes task checkboxes clickable; receives the 1-based source line of the task. */
+  onToggleTask?: (line: number) => void;
 }
 
 const remarkPlugins = [remarkGfm, remarkMath, remarkAlerts];
@@ -282,6 +284,7 @@ export function MarkdownPreview({
   fontSize = 14,
   renderHtml = false,
   imageBaseDir,
+  onToggleTask,
 }: MarkdownPreviewProps) {
   const { t } = useTranslation();
   const components = useMemo<Components>(
@@ -299,8 +302,34 @@ export function MarkdownPreview({
           />
         );
       },
+      ...(onToggleTask && {
+        li: ({ node, className, children }) => {
+          const line = node?.position?.start.line;
+          const isTask = String(className ?? "").includes("task-list-item");
+          return (
+            <li
+              className="text-ink-soft leading-[1.9]"
+              onChange={(event) => {
+                // Nested tasks: only the innermost item toggles.
+                event.stopPropagation();
+                if (isTask && line) onToggleTask(line);
+              }}
+            >
+              {children}
+            </li>
+          );
+        },
+        input: ({ checked, type }) => (
+          <input
+            type={type}
+            checked={checked}
+            onChange={() => undefined}
+            className="mr-1.5 accent-bamboo cursor-pointer"
+          />
+        ),
+      }),
     }),
-    [imageBaseDir],
+    [imageBaseDir, onToggleTask],
   );
   return (
     <div className="font-body markdown-selectable" style={{ fontSize: `${fontSize}px` }}>
