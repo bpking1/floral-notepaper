@@ -468,6 +468,12 @@ pub fn run() {
         })
         .on_window_event(desktop::handle_window_event)
         .invoke_handler(tauri::generate_handler![
+            services::remote::remote_config_get,
+            services::remote::remote_config_save,
+            services::remote::remote_request,
+            services::remote::remote_append,
+            services::remote::remote_image_upload,
+            services::remote::remote_inbox_image_upload,
             app_name,
             notes_list,
             notes_get,
