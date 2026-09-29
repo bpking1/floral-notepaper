@@ -1,0 +1,6 @@
+secrets/
+compose.yaml
+notes-api
+.env
+tmp/
+data/

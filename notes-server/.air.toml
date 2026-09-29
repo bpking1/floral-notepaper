@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "tmp"
+env_files = [".env"]
+
+[build]
+  cmd = "go build -o ./tmp/notes-server ."
+  entrypoint = ["./tmp/notes-server"]
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "data", "secrets"]
+  exclude_regex = ["_test.go"]
+  # Stop instead of silently running the previous binary when the build fails.
+  stop_on_error = true

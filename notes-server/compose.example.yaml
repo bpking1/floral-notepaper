@@ -1,0 +1,26 @@
+services:
+  notes:
+    build: .
+    restart: unless-stopped
+    user: "1000:1000" # Change to the owner of your notes directory.
+    ports:
+      - "127.0.0.1:8789:8789"
+    environment:
+      NOTES_ROOT: /notes
+      NOTES_BIND: 0.0.0.0:8789
+      NOTES_TOKEN_FILE: /run/secrets/notes_token
+      TZ: Asia/Shanghai # Dates and times written by /v1/append.
+      # NOTES_INBOX: Chat.md
+      # NOTES_NEW_DIR: notes # titled captures without a leading /
+      # NOTES_ATTACHMENTS: media
+      # NOTES_PUBLIC_IMAGES: "true" # tiles load images without the token
+    volumes:
+      - /srv/markdown:/notes
+    secrets:
+      - notes_token
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+secrets:
+  notes_token:
+    file: ./secrets/notes_token
