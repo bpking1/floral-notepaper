@@ -327,6 +327,7 @@ export function MarkdownPreview({
             {...props}
           />
         );
+      },
     }),
     [imageBaseDir],
   );
