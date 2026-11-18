@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import type { RemoteFileEntry } from "./api";
@@ -27,6 +27,7 @@ export function TitleTargetHint({ active, title, titleRef }: TitleTargetHintProp
   const [highlight, setHighlight] = useState(-1);
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
   const [newDir, setNewDir] = useState("");
+  const listRef = useRef<HTMLUListElement | null>(null);
   const titled = active && title.trim() !== "";
 
   useEffect(() => {
@@ -66,6 +67,11 @@ export function TitleTargetHint({ active, title, titleRef }: TitleTargetHintProp
     [active, dismissedFor, files, focused, title],
   );
   useEffect(() => setHighlight(-1), [title]);
+  useEffect(() => {
+    if (highlight < 0) return;
+    const item = listRef.current?.children[highlight] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: "nearest" });
+  }, [highlight]);
 
   // Goes through the input's own change handling, as if typed.
   const pick = useCallback(
@@ -132,11 +138,15 @@ export function TitleTargetHint({ active, title, titleRef }: TitleTargetHintProp
             }`}
       </p>
       {suggestions.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-20 mt-1 py-1 max-h-48 overflow-y-auto bg-cloud/95 backdrop-blur-sm border border-paper-deep/50 rounded-lg shadow-[0_4px_16px_rgba(26,26,24,0.08)]">
+        <ul
+          ref={listRef}
+          className="absolute left-0 right-0 top-full z-20 mt-1 py-1 max-h-48 overflow-y-auto bg-cloud/95 backdrop-blur-sm border border-paper-deep/50 rounded-lg shadow-[0_4px_16px_rgba(26,26,24,0.08)]"
+        >
           {suggestions.map((item, index) => (
             <li key={item.value}>
               <button
                 type="button"
+                title={item.label}
                 // mousedown keeps focus in the title, which a click would take away.
                 onMouseDown={(event) => {
                   event.preventDefault();
