@@ -32,7 +32,6 @@ import { useRemoteNote } from "../features/remote/useRemoteNote";
 import { OpenPanelWithRemote } from "../features/remote/RemoteOpenPanel";
 import { useRemoteTileContent } from "../features/remote/remoteImages";
 import { useTileImageCopy } from "../features/remote/useTileImageCopy";
-import { useTaskToggle } from "../features/tasks/useTaskToggle";
 import {
   DEFAULT_TILE_COLOR,
   normalizeTileColor,
@@ -277,6 +276,7 @@ export function NotePad({
       tileRenderMarkdown?: boolean;
       tileDoubleClickToEdit?: boolean;
       tileSaveReturnsToPin?: boolean;
+      noteSurfaceAutoSave?: boolean;
     }>("config-changed", (event) => {
       const mode = event.payload.tileColorMode ?? tileColorModeRef.current;
       const raw = event.payload.tileColor ?? tileColorRawRef.current;
@@ -290,6 +290,8 @@ export function NotePad({
         setTileDoubleClickToEdit(event.payload.tileDoubleClickToEdit);
       if (event.payload.tileSaveReturnsToPin != null)
         setTileSaveReturnsToPin(event.payload.tileSaveReturnsToPin);
+      if (event.payload.noteSurfaceAutoSave != null)
+        setNoteSurfaceAutoSave(event.payload.noteSurfaceAutoSave);
     });
     return () => {
       void unlisten.then((fn) => fn());
@@ -636,7 +638,10 @@ export function NotePad({
         throw new Error(t("notepad.error.copyUnsupported", { defaultValue: "当前环境不支持复制" }));
       }
       await clipboard.writeText(content);
-      setStatus("copied");
+      // 复制不能清除磁贴勾选产生的未保存状态，否则自动保存会被取消。
+      setStatus((current) =>
+        current === "dirty" || current === "saveFailed" ? current : "copied",
+      );
     } catch (error) {
       showToast(getErrorMessage(error));
     }
@@ -653,11 +658,6 @@ export function NotePad({
   });
   useRemoteNote({ noteId: editingNoteId, title, content, setContent, setStatus });
   const tileContent = useRemoteTileContent(tileNoteId, content);
-  const toggleTask = useTaskToggle({
-    setContent,
-    setStatus,
-    save: () => handleSave({ isAutoSave: true }),
-  });
   useTileImageCopy();
   const copyTileContentRef = useRef(copyTileContent);
   copyTileContentRef.current = copyTileContent;
@@ -744,11 +744,16 @@ export function NotePad({
         <Tile
           title={tileTitle || undefined}
           content={tileContent}
+          onContentChange={(nextContent) => {
+            contentValueRef.current = nextContent;
+            setContent(nextContent);
+            statusRef.current = "dirty";
+            setStatus("dirty");
+          }}
           color={tileColor}
           fontSize={surfaceFontSize}
           renderMarkdown={tileRenderMarkdown}
           imageBaseDir={imageBaseDir ?? undefined}
-          onToggleTask={toggleTask}
           width="100%"
           className="h-full cursor-default"
           data-surface-mode={surfaceMode}
