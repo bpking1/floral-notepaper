@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -48,6 +49,8 @@ func storeError(w http.ResponseWriter, err error) {
 		status, code, message = 422, "encoding", err.Error()
 	case errors.Is(err, errAppendEmpty), errors.Is(err, errAppendID), errors.Is(err, errAppendPath):
 		status, code, message = 400, "invalidEntry", err.Error()
+	case errors.Is(err, errQuery):
+		status, code, message = 400, "invalidQuery", err.Error()
 	case errors.Is(err, fs.ErrPermission):
 		status, code, message = 403, "permission", "notes directory permission denied"
 	default:
@@ -149,6 +152,32 @@ func handler(s *store, token string) http.Handler {
 		gz := gzip.NewWriter(w)
 		defer gz.Close()
 		jsonResponse(gzipResponseWriter{w, gz}, 200, body)
+	})
+	mux.HandleFunc("GET /v1/search", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		limit := 0
+		if rawLimit := strings.TrimSpace(query.Get("limit")); rawLimit != "" {
+			parsed, err := strconv.Atoi(rawLimit)
+			if err != nil || parsed <= 0 {
+				apiError(w, 400, "invalidQuery", "limit must be a positive integer")
+				return
+			}
+			limit = parsed
+		}
+		res, err := s.search(r.Context(), query.Get("q"), limit)
+		if err != nil {
+			storeError(w, err)
+			return
+		}
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			jsonResponse(w, 200, res)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Add("Vary", "Accept-Encoding")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		jsonResponse(gzipResponseWriter{w, gz}, 200, res)
 	})
 	mux.HandleFunc("GET /v1/file", func(w http.ResponseWriter, r *http.Request) {
 		doc, err := s.read(r.URL.Query().Get("path"))
