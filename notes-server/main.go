@@ -52,13 +52,31 @@ func main() {
 		log.Fatal("NOTES_ATTACHMENTS must be a relative directory, e.g. ", defaultAttachments)
 	}
 	publicImages := os.Getenv("NOTES_PUBLIC_IMAGES") == "true"
+	cleanupInterval, err := parseCleanupInterval(os.Getenv("NOTES_IMAGE_CLEANUP_INTERVAL"))
+	if err != nil {
+		log.Fatal("NOTES_IMAGE_CLEANUP_INTERVAL: ", err)
+	}
+	cleanupMinAge, err := parseCleanupMinAgeEnv(os.Getenv("NOTES_IMAGE_CLEANUP_MIN_AGE"))
+	if err != nil {
+		log.Fatal("NOTES_IMAGE_CLEANUP_MIN_AGE: ", err)
+	}
 	bind := os.Getenv("NOTES_BIND")
 	if bind == "" {
 		bind = "127.0.0.1:8789"
 	}
-	srv := &http.Server{Addr: bind, Handler: handler(&store{root: root, inbox: inbox, newDir: newDir, attachments: attachments, publicImages: publicImages}, token), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	st := &store{
+		root:          root,
+		inbox:         inbox,
+		newDir:        newDir,
+		attachments:   attachments,
+		publicImages:  publicImages,
+		cleanupMinAge: cleanupMinAge,
+	}
+	srv := &http.Server{Addr: bind, Handler: handler(st, token), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	cleanupCtx, cancelCleanup := context.WithCancel(ctx)
+	cleanupDone := startImageCleanupLoop(cleanupCtx, st, cleanupInterval, cleanupMinAge)
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -69,7 +87,15 @@ func main() {
 	if publicImages {
 		log.Print("NOTES_PUBLIC_IMAGES: GET /v1/image does not require the token")
 	}
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+	if cleanupInterval > 0 {
+		log.Printf("image cleanup enabled: every %s, minAge %s (moves unused images to %s/)", cleanupInterval, cleanupMinAge, trashDir)
+	} else {
+		log.Print("image cleanup disabled (NOTES_IMAGE_CLEANUP_INTERVAL)")
+	}
+	srvErr := srv.ListenAndServe()
+	cancelCleanup()
+	<-cleanupDone
+	if srvErr != nil && !errors.Is(srvErr, http.ErrServerClosed) {
+		log.Fatal(srvErr)
 	}
 }

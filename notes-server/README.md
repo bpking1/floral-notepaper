@@ -47,9 +47,11 @@ notes.example.com {
 | `NOTES_BIND`          | 默认 `127.0.0.1:8789`                                             |
 | `NOTES_INBOX`         | 追加目标，默认 `Chat.md`                                          |
 | `NOTES_NEW_DIR`       | 有标题的便笺默认放到的目录，如 `notes`；默认空，即笔记库根目录    |
-| `NOTES_ATTACHMENTS`   | 图片目录，默认 `media`                                            |
-| `NOTES_PUBLIC_IMAGES` | `true` 时读取图片无需 Token，磁贴才能显示远程图片；仅限可信局域网 |
-| `TZ`                  | 追加记录使用的时区，如 `Asia/Shanghai`                            |
+| `NOTES_ATTACHMENTS`            | 图片目录，默认 `media`                                                            |
+| `NOTES_PUBLIC_IMAGES`          | `true` 时读取图片无需 Token，磁贴才能显示远程图片；仅限可信局域网                 |
+| `NOTES_IMAGE_CLEANUP_INTERVAL` | 孤儿图片自动清理周期，默认 `24h`；设为 `0` 或 `off` 可关闭                        |
+| `NOTES_IMAGE_CLEANUP_MIN_AGE`  | 未引用图片移入 `.trash/` 前的宽限期，默认 `168h`（7 天，也支持 `7d` 写法）        |
+| `TZ`                           | 追加记录使用的时区，如 `Asia/Shanghai`                                            |
 
 ## 桌面端使用
 
@@ -90,7 +92,7 @@ API 地址可以带反向代理前缀，例如 `https://example.com/notes/`；�
 - 文件名：拖入的文件保留原名（空格、括号等 Markdown 敏感字符替换为 `-`）；粘贴的截图按上传时间命名，如 `20260928-143205.png`，时间按服务端 `TZ`。重名时加 `-2`、`-3` 后缀，不会覆盖已有文件。
 - 去重：上传前按内容比对目录中已有图片，完全相同则复用，因此请求重试或重复粘贴不会产生副本。上传在目录锁内完成，多个请求并发也不会重复。
 - 磁贴开启 Markdown 渲染时显示远程图片，需要服务端设置 `NOTES_PUBLIC_IMAGES=true`（只放开 `GET /v1/image`，其余接口仍需 Token）。在磁贴中右键图片即复制到剪贴板（转为 PNG），本地便笺的图片同样适用。
-- 可以在 nvim 中随意重命名图片，只需同步修改链接；服务不会自动删除或改名图片。
+- 可以在 nvim 中随意重命名图片，只需同步修改链接；服务不会自动改名图片，但默认每 24 小时清理一次超过 7 天未被任何 `.md`/`.markdown` 笔记（含 `.trash/` 内已删笔记）引用的受管目录孤儿图片，将其移入 `.trash/<NOTES_ATTACHMENTS>/`（不直接硬删，可随时移回）。如需关闭可设 `NOTES_IMAGE_CLEANUP_INTERVAL=0`。
 - 支持 PNG、JPEG、GIF、静态 WebP、BMP，每张最大 20 MiB、4000 万像素；服务根据实际内容判断格式和扩展名，不信任客户端的扩展名或 `Content-Type`。
 
 ## 协议
@@ -108,6 +110,7 @@ API 地址可以带反向代理前缀，例如 `https://example.com/notes/`；�
 | `DELETE /v1/file?path=日记/今天.md`             | 移到 `.trash/日记/今天.md`，返回 `{ "trashedTo": "…" }`；可带 `If-Match`，文件已变化则 `412`                                                                                          |
 | `POST /v1/images?note=日记/今天.md&name=图.png` | 正文为原始图片字节，返回 `{ "path": "media/图.png", "markdownPath": "../media/图.png" }`；`name` 可省略                                                                               |
 | `POST /v1/images?inbox`                         | 同上，链接相对于下一次追加写入的 inbox 文件                                                                                                                                           |
+| `POST /v1/images/cleanup?dryRun=1`              | 扫描受管目录内超过宽限期且未被引用的孤儿图片；`dryRun` 默认 `true` 只预览，传 `dryRun=false` 时移入 `.trash/`（可带 `minAge=7d`）                                                     |
 | `GET /v1/image?path=media/图.png`               | 原始图片字节，`Content-Type` 根据实际内容返回                                                                                                                                         |
 
 `/v1/files` 最多列出 20000 个文件，超出时只返回最近修改的部分并设 `truncated: true`；客户端带 `Accept-Encoding: gzip` 时压缩返回。追加按 `id` 去重：响应丢失后用同一 `id` 重试不会重复写入（去重记录只在内存中，服务重启后失效）。保存已有文件必须携带读取时返回的 `If-Match: "sha256…"`；新建使用 `If-None-Match: *`。版本冲突返回 `412`，缺少条件头返回 `428`，文件不存在返回 `404`。错误体为 `{ "code": "…", "message": "…" }`。

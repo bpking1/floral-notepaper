@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -36,12 +37,16 @@ type store struct {
 	attachments string // uploaded image directory; empty means defaultAttachments
 	newDir      string // where titled captures without a leading / go; empty means the root
 	// publicImages serves GET /v1/image without the token, for trusted networks.
-	publicImages bool
-	now          func() time.Time // test clock; nil means time.Now
+	publicImages  bool
+	cleanupMinAge time.Duration    // default orphan image grace period; 0 means defaultCleanupMinAge
+	now           func() time.Time // test clock; nil means time.Now
 
-	appendMu    sync.Mutex
-	appended    map[string]appendResult
-	appendOrder []string
+	appendMu     sync.Mutex
+	appended     map[string]appendResult
+	appendOrder  []string
+	writeSeq     atomic.Uint64 // incremented on API note writes and trashes
+	reuseMu      sync.Mutex
+	recentReused map[string]time.Time // filename -> last dedup reuse timestamp
 }
 type document struct {
 	Content  string `json:"content"`
@@ -264,6 +269,7 @@ func (s *store) write(ctx context.Context, name string, data []byte, expected st
 	if err != nil {
 		return "", err
 	}
+	s.writeSeq.Add(1)
 	dir, err := parent.Open(".")
 	if err != nil {
 		return "", err

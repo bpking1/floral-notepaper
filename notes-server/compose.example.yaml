@@ -14,6 +14,8 @@ services:
       # NOTES_NEW_DIR: notes # titled captures without a leading /
       # NOTES_ATTACHMENTS: media
       # NOTES_PUBLIC_IMAGES: "true" # tiles load images without the token
+      # NOTES_IMAGE_CLEANUP_INTERVAL: 24h # 0 or off to disable
+      # NOTES_IMAGE_CLEANUP_MIN_AGE: 168h # 7d grace period before moving to .trash/
     volumes:
       - /srv/markdown:/notes
     secrets:

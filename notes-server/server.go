@@ -49,7 +49,7 @@ func storeError(w http.ResponseWriter, err error) {
 		status, code, message = 422, "encoding", err.Error()
 	case errors.Is(err, errAppendEmpty), errors.Is(err, errAppendID), errors.Is(err, errAppendPath):
 		status, code, message = 400, "invalidEntry", err.Error()
-	case errors.Is(err, errQuery):
+	case errors.Is(err, errQuery), errors.Is(err, errCleanupParam):
 		status, code, message = 400, "invalidQuery", err.Error()
 	case errors.Is(err, fs.ErrPermission):
 		status, code, message = 403, "permission", "notes directory permission denied"
@@ -95,6 +95,7 @@ func requestLog(handler http.Handler) http.Handler {
 			time.Since(start).Round(time.Microsecond), r.RemoteAddr)
 	})
 }
+
 // ifNoneMatch reports whether any If-None-Match header value matches etag
 // using RFC 9110 §13.1.2 weak comparison (supporting *, comma-separated lists,
 // and W/ weak entity-tag prefixes).
@@ -149,6 +150,38 @@ func handler(s *store, token string) http.Handler {
 			return
 		}
 		jsonResponse(w, 200, result)
+	})
+	mux.HandleFunc("POST /v1/images/cleanup", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		dryRun := true
+		if query.Has("dryRun") {
+			parsed, err := parseCleanupBool(query.Get("dryRun"))
+			if err != nil {
+				storeError(w, err)
+				return
+			}
+			dryRun = parsed
+		}
+		minAge := s.defaultCleanupMinAge()
+		if rawAge := strings.TrimSpace(query.Get("minAge")); rawAge != "" {
+			parsed, err := parseCleanupDuration(rawAge)
+			if err != nil {
+				storeError(w, err)
+				return
+			}
+			if parsed < 0 {
+				apiError(w, 400, "invalidQuery", "minAge must be non-negative")
+				return
+			}
+			minAge = parsed
+		}
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(cleanupWriteTimeout))
+		res, err := s.cleanupOrphanImages(r.Context(), cleanupOptions{minAge: minAge, dryRun: dryRun})
+		if err != nil {
+			storeError(w, err)
+			return
+		}
+		jsonResponse(w, 200, res)
 	})
 	mux.HandleFunc("GET /v1/image", func(w http.ResponseWriter, r *http.Request) {
 		data, contentType, err := s.readImage(r.URL.Query().Get("path"))

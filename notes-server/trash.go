@@ -44,5 +44,6 @@ func (s *store) trash(ctx context.Context, name, expected string) (string, error
 	if err := s.root.Rename(name, dest); err != nil {
 		return "", err
 	}
+	s.writeSeq.Add(1)
 	return dest, nil
 }

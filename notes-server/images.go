@@ -277,6 +277,7 @@ func (s *store) storeImage(ctx context.Context, note, hint string, data []byte) 
 	if name, err := findImage(images, data); err != nil {
 		return uploadedImage{}, err
 	} else if name != "" {
+		s.recordImageReuse(images, name)
 		return link(name), nil
 	}
 	var id [16]byte
