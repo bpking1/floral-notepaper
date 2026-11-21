@@ -259,3 +259,75 @@ func TestListKeepsNewestWhenTruncatedAndGzips(t *testing.T) {
 		t.Fatal(result)
 	}
 }
+
+func TestGetFileIfNoneMatch(t *testing.T) {
+	_, _, h := fixture(t)
+	created := call(h, "PUT", "note.md", "v1", "", "*")
+	if created.Code != 200 {
+		t.Fatal(created.Code, created.Body.String())
+	}
+	rev1 := created.Header().Get("ETag")
+	if rev1 == "" {
+		t.Fatal("missing ETag header on PUT")
+	}
+
+	for _, header := range []string{rev1, "W/" + rev1, `"stale", ` + rev1, "*"} {
+		w := call(h, "GET", "note.md", "", "", header)
+		if w.Code != http.StatusNotModified {
+			t.Fatalf("If-None-Match %q returned status %d, want 304", header, w.Code)
+		}
+		if w.Body.Len() != 0 {
+			t.Fatalf("If-None-Match %q returned non-empty body: %q", header, w.Body.String())
+		}
+		if w.Header().Get("ETag") != rev1 {
+			t.Fatalf("If-None-Match %q returned ETag %q, want %q", header, w.Header().Get("ETag"), rev1)
+		}
+	}
+
+	r := httptest.NewRequest("GET", "/v1/file?path=note.md", nil)
+	r.Header.Set("Authorization", "Bearer "+testToken)
+	r.Header.Add("If-None-Match", `"other"`)
+	r.Header.Add("If-None-Match", rev1)
+	multiHeaderResp := httptest.NewRecorder()
+	h.ServeHTTP(multiHeaderResp, r)
+	if multiHeaderResp.Code != http.StatusNotModified || multiHeaderResp.Body.Len() != 0 {
+		t.Fatalf("multiple If-None-Match headers returned %d (%q)", multiHeaderResp.Code, multiHeaderResp.Body.String())
+	}
+
+	stale := call(h, "GET", "note.md", "", "", `"stale"`)
+	if stale.Code != 200 {
+		t.Fatalf("stale If-None-Match returned %d, want 200", stale.Code)
+	}
+	var doc1 document
+	if err := json.Unmarshal(stale.Body.Bytes(), &doc1); err != nil {
+		t.Fatal(err)
+	}
+	if doc1.Content != "v1" || doc1.Revision != rev1 || stale.Header().Get("ETag") != rev1 {
+		t.Fatalf("unexpected doc on stale ETag: %+v, ETag=%q", doc1, stale.Header().Get("ETag"))
+	}
+
+	updated := call(h, "PUT", "note.md", "v2", rev1, "")
+	if updated.Code != 200 {
+		t.Fatal(updated.Code, updated.Body.String())
+	}
+	rev2 := updated.Header().Get("ETag")
+	if rev2 == "" || rev2 == rev1 {
+		t.Fatalf("expected new ETag after update, got %q", rev2)
+	}
+
+	afterUpdate := call(h, "GET", "note.md", "", "", rev1)
+	if afterUpdate.Code != 200 {
+		t.Fatalf("old ETag after update returned %d, want 200", afterUpdate.Code)
+	}
+	var doc2 document
+	if err := json.Unmarshal(afterUpdate.Body.Bytes(), &doc2); err != nil {
+		t.Fatal(err)
+	}
+	if doc2.Content != "v2" || doc2.Revision != rev2 || afterUpdate.Header().Get("ETag") != rev2 {
+		t.Fatalf("unexpected doc after update: %+v, ETag=%q", doc2, afterUpdate.Header().Get("ETag"))
+	}
+
+	if w := call(h, "GET", "missing.md", "", "", "*"); w.Code != 404 {
+		t.Fatalf("missing file with If-None-Match: * returned %d, want 404", w.Code)
+	}
+}

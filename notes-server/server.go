@@ -95,6 +95,31 @@ func requestLog(handler http.Handler) http.Handler {
 			time.Since(start).Round(time.Microsecond), r.RemoteAddr)
 	})
 }
+// ifNoneMatch reports whether any If-None-Match header value matches etag
+// using RFC 9110 §13.1.2 weak comparison (supporting *, comma-separated lists,
+// and W/ weak entity-tag prefixes).
+func ifNoneMatch(headers []string, etag string) bool {
+	target := strings.TrimPrefix(strings.TrimSpace(etag), "W/")
+	if target == "" {
+		return false
+	}
+	for _, header := range headers {
+		for _, raw := range strings.Split(header, ",") {
+			candidate := strings.TrimSpace(raw)
+			if candidate == "" {
+				continue
+			}
+			if candidate == "*" {
+				return true
+			}
+			if strings.TrimPrefix(candidate, "W/") == target {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func handler(s *store, token string) http.Handler {
 	mux := http.NewServeMux()
 	// Lets clients show where a capture will go before sending it.
@@ -186,6 +211,10 @@ func handler(s *store, token string) http.Handler {
 			return
 		}
 		w.Header().Set("ETag", doc.Revision)
+		if ifNoneMatch(r.Header.Values("If-None-Match"), doc.Revision) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
 		jsonResponse(w, 200, doc)
 	})
 	mux.HandleFunc("PUT /v1/file", func(w http.ResponseWriter, r *http.Request) {
